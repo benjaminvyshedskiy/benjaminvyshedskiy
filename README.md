@@ -1,4 +1,4 @@
-- 👋 Hi, I’m benjamin vyshedskiy 
+- 👋 Hi, I’m Ben Vyshedskiy 
 - 👀 I’m interested in biochemistry, bioinformatics, application of AI in chemistry and biology(Alphafold for example), Stock market data analysis.
 
 - 📫 How to reach me email: thebennyv@gmail.com
