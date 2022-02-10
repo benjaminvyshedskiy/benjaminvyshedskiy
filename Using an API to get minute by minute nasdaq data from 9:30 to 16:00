@@ -1,0 +1,618 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "fucking with api",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/benjaminvyshedskiy/benjaminvyshedskiy/blob/main/Using%20an%20API%20to%20get%20minute%20by%20minute%20nasdaq%20data%20from%209%3A30%20to%2016%3A00\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "0kLNxTXZ2Bgq",
+        "outputId": "9c338492-47b0-4ae9-e048-9dc8b50c495d"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: polygon-api-client in /usr/local/lib/python3.7/dist-packages (0.2.11)\n",
+            "Requirement already satisfied: websockets>=8.0.2 in /usr/local/lib/python3.7/dist-packages (from polygon-api-client) (10.1)\n",
+            "Requirement already satisfied: requests>=2.22.0 in /usr/local/lib/python3.7/dist-packages (from polygon-api-client) (2.23.0)\n",
+            "Requirement already satisfied: websocket-client>=0.56.0 in /usr/local/lib/python3.7/dist-packages (from polygon-api-client) (1.2.3)\n",
+            "Requirement already satisfied: chardet<4,>=3.0.2 in /usr/local/lib/python3.7/dist-packages (from requests>=2.22.0->polygon-api-client) (3.0.4)\n",
+            "Requirement already satisfied: idna<3,>=2.5 in /usr/local/lib/python3.7/dist-packages (from requests>=2.22.0->polygon-api-client) (2.10)\n",
+            "Requirement already satisfied: certifi>=2017.4.17 in /usr/local/lib/python3.7/dist-packages (from requests>=2.22.0->polygon-api-client) (2021.10.8)\n",
+            "Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /usr/local/lib/python3.7/dist-packages (from requests>=2.22.0->polygon-api-client) (1.24.3)\n",
+            "Minute aggregates for QQQ between 2021-09-19 and 2021-09-20.\n"
+          ]
+        }
+      ],
+      "source": [
+        "!pip install polygon-api-client\n",
+        "import datetime\n",
+        "import pandas as pd\n",
+        "import statistics\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "import random\n",
+        "import matplotlib.pyplot as plt\n",
+        "import sklearn\n",
+        "from sklearn.model_selection import TimeSeriesSplit\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "\n",
+        "from polygon import RESTClient\n",
+        "\n",
+        "listofresults = []\n",
+        "def ts_to_datetime(ts) -> str:\n",
+        "    return datetime.datetime.fromtimestamp(ts / 1000.0).strftime('%Y-%m-%d %H:%M')\n",
+        "\n",
+        "\n",
+        "def main():\n",
+        "    key = \"key\"\n",
+        "\n",
+        "    # RESTClient can be used as a context manager to facilitate closing the underlying http session\n",
+        "    # https://requests.readthedocs.io/en/master/user/advanced/#session-objects\n",
+        "    with RESTClient(key) as client:\n",
+        "        from_ = \"2021-09-19\"\n",
+        "        to = \"2021-09-20\"\n",
+        "        resp = client.stocks_equities_aggregates(\"QQQ\", 1, \"minute\", from_, to, unadjusted=False, limit=50000)\n",
+        "\n",
+        "        print(f\"Minute aggregates for {resp.ticker} between {from_} and {to}.\")\n",
+        "\n",
+        "        for result in resp.results:\n",
+        "            dt = ts_to_datetime(result[\"t\"])\n",
+        "            listofresults.append(list((dt, result['o'], result['h'], result['l'], result['c'],result[\"v\"],result[\"vw\"],result[\"n\"])))\n",
+        "            Data = pd.DataFrame(listofresults, columns=[\"t\",'o',\"h\",\"l\",\"c\",\"v\",\"vw\",\"n\"])\n",
+        "\n",
+        "\n",
+        "if __name__ == '__main__':\n",
+        "    main()\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "import base64\n",
+        "import pandas as pd\n",
+        "from IPython.display import HTML\n",
+        "\n",
+        "def create_download_link( df, title = \"Download CSV file\", filename = \"data.csv\"):\n",
+        "    csv = df.to_csv()\n",
+        "    b64 = base64.b64encode(csv.encode())\n",
+        "    payload = b64.decode()\n",
+        "    html = '<a download=\"{filename}\" href=\"data:text/csv;base64,{payload}\" target=\"_blank\">{title}</a>'\n",
+        "    html = html.format(payload=payload,title=title,filename=filename)\n",
+        "    return HTML(html)\n",
+        "\n",
+        "create_download_link(Data)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 200
+        },
+        "id": "uwiuofGW_vTy",
+        "outputId": "9c4049ab-c4cb-4085-fb38-38dd4a12f4a0"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "error",
+          "ename": "NameError",
+          "evalue": "ignored",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mNameError\u001b[0m                                 Traceback (most recent call last)",
+            "\u001b[0;32m<ipython-input-4-29c9b38ee012>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     12\u001b[0m     \u001b[0;32mreturn\u001b[0m \u001b[0mHTML\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mhtml\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     13\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 14\u001b[0;31m \u001b[0mcreate_download_link\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mData\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+            "\u001b[0;31mNameError\u001b[0m: name 'Data' is not defined"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import datetime\n",
+        "import pandas as pd\n",
+        "import datetime\n",
+        "import pandas as pd\n",
+        "import statistics\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "import random\n",
+        "import matplotlib.pyplot as plt\n",
+        "import sklearn\n",
+        "from sklearn.model_selection import TimeSeriesSplit\n",
+        "from sklearn.model_selection import train_test_split\n"
+      ],
+      "metadata": {
+        "id": "nekDXhRS7V2D"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "#Data = pd.DataFrame(listofresults, columns=[\"t\",'o',\"h\",\"l\",\"c\",\"v\",\"vw\",\"n\"]) \n",
+        "#turn off the other one if you are actually loading data, \n",
+        "#the other line is for testing on data u sent me\n",
+        "prices = pd.read_csv(\"/content/nasdaqminutedatasep192021-dec122021.csv\")\n",
+        "prices = prices.set_index(pd.DatetimeIndex(prices['t'])).between_time('09:30:00','16:00:00')[['o',\"h\",\"l\",\"c\",\"v\",\"vw\",\"n\"]]#possibly can delete this and just have it do whole df... idrk...\n",
+        "prices.reset_index(inplace = True)\n",
+        "\n",
+        "def shift(column,shift):\n",
+        "  x = list(prices[column])\n",
+        "  for i in range(0,shift):\n",
+        "    x.insert(0, 0)\n",
+        "    x.pop()\n",
+        "  return(pd.DataFrame(x))\n",
+        "prices[\"previousclose\"] = shift(\"c\",1)\n",
+        "prices[\"changefromclose\"]  =  -(prices[\"c\"]-prices[\"previousclose\"])/prices[\"previousclose\"]*100\n",
+        "prices[\"previousvolume\"] = shift(\"v\",1)\n",
+        "prices[\"changefromvolume\"] =  -(prices[\"v\"]-prices[\"previousvolume\"])/prices[\"previousvolume\"]*100\n",
+        "prices[\"previousOpen\"] = shift(\"o\",1)\n",
+        "prices[\"changefromopen\"] =  -(prices[\"o\"]-prices[\"previousOpen\"])/prices[\"previousOpen\"]*100\n",
+        "prices[\"previousHigh\"] = shift(\"h\",1)\n",
+        "prices[\"changefromHigh\"] =  -(prices[\"h\"]-prices[\"previousHigh\"])/prices[\"previousHigh\"]*100\n",
+        "prices[\"previousLow\"] = shift(\"l\",1)\n",
+        "prices[\"changefromLow\"] = - (prices[\"l\"]-prices[\"previousLow\"])/prices[\"previousLow\"]*100\n",
+        "prices[\"previousvw\"]  = shift(\"vw\",1)\n",
+        "prices[\"changefromvw\"] =  -(prices[\"vw\"]-prices[\"previousvw\"])/prices[\"previousvw\"]*100\n",
+        "prices[\"previousn\"]  = shift(\"n\",1)\n",
+        "prices[\"changefromn\"] =-(prices[\"n\"]-prices[\"previousn\"])/prices[\"previousn\"]*100\n",
+        "\n",
+        "\n",
+        "prices[\"changefromclose1\"] = shift(\"changefromclose\",1)\n",
+        "prices[\"changefromclose2\"] = shift(\"changefromclose\",2)\n",
+        "prices[\"changefromclose3\"] = shift(\"changefromclose\",3)\n",
+        "prices[\"changefromclose4\"] = shift(\"changefromclose\",4)\n",
+        "prices[\"changefromclose5\"] = shift(\"changefromclose\",5)\n",
+        "prices[\"changefromclose6\"] = shift(\"changefromclose\",6)\n",
+        "prices[\"changefromclose7\"] = shift(\"changefromclose\",7)\n",
+        "prices[\"2derivativefromclose12\"] = (prices[\"changefromclose1\"]-prices[\"changefromclose2\"])/prices[\"changefromclose2\"]*100\n",
+        "prices[\"2derivativefromclose23\"] = (prices[\"changefromclose2\"]-prices[\"changefromclose3\"])/prices[\"changefromclose3\"]*100\n",
+        "prices[\"2derivativefromclose34\"] = (prices[\"changefromclose3\"]-prices[\"changefromclose4\"])/prices[\"changefromclose4\"]*100\n",
+        "\n",
+        "prices[\"changefromvolume1\"] = shift(\"changefromvolume\",1)\n",
+        "prices[\"changefromvolume2\"] = shift(\"changefromvolume\",2)\n",
+        "prices[\"changefromvolume3\"] = shift(\"changefromvolume\",3)\n",
+        "prices[\"changefromvolume4\"] = shift(\"changefromvolume\",4)\n",
+        "prices[\"changefromvolume5\"] = shift(\"changefromvolume\",5)\n",
+        "prices[\"changefromvolume6\"] = shift(\"changefromvolume\",6)\n",
+        "prices[\"changefromvolume7\"] = shift(\"changefromvolume\",7)\n",
+        "prices[\"2derivativefromvolume12\"] = (prices[\"changefromvolume1\"]-prices[\"changefromvolume2\"])/prices[\"changefromvolume2\"]*100\n",
+        "prices[\"2derivativefromvolume23\"] = (prices[\"changefromvolume2\"]-prices[\"changefromvolume3\"])/prices[\"changefromvolume3\"]*100\n",
+        "prices[\"2derivativefromvolume34\"] = (prices[\"changefromvolume3\"]-prices[\"changefromvolume4\"])/prices[\"changefromvolume4\"]*100\n",
+        "\n",
+        "prices[\"changefromopen1\"] = shift(\"changefromopen\",1)\n",
+        "prices[\"changefromopen2\"] = shift(\"changefromopen\",2)\n",
+        "prices[\"changefromopen3\"] = shift(\"changefromopen\",3)\n",
+        "prices[\"changefromopen4\"] = shift(\"changefromopen\",4)\n",
+        "prices[\"changefromopen5\"] = shift(\"changefromopen\",5)\n",
+        "prices[\"changefromopen6\"] = shift(\"changefromopen\",6)\n",
+        "prices[\"changefromopen7\"] = shift(\"changefromopen\",7)\n",
+        "prices[\"2derivativefromopen12\"] = (prices[\"changefromopen1\"]-prices[\"changefromopen2\"])/prices[\"changefromopen2\"]*100\n",
+        "prices[\"2derivativefromopen23\"] = (prices[\"changefromopen2\"]-prices[\"changefromopen3\"])/prices[\"changefromopen3\"]*100\n",
+        "prices[\"2derivativefromopen34\"] = (prices[\"changefromopen3\"]-prices[\"changefromopen4\"])/prices[\"changefromopen4\"]*100\n",
+        "\n",
+        "prices[\"changefromHigh1\"] = shift(\"changefromHigh\",1)\n",
+        "prices[\"changefromHigh2\"] = shift(\"changefromHigh\",2)\n",
+        "prices[\"changefromHigh3\"] = shift(\"changefromHigh\",3)\n",
+        "prices[\"changefromHigh4\"] = shift(\"changefromHigh\",4)\n",
+        "prices[\"changefromHigh5\"] = shift(\"changefromHigh\",5)\n",
+        "prices[\"changefromHigh6\"] = shift(\"changefromHigh\",6)\n",
+        "prices[\"changefromHigh7\"] = shift(\"changefromHigh\",7)\n",
+        "prices[\"2derivativefromHigh12\"] = (prices[\"changefromHigh1\"]-prices[\"changefromHigh2\"])/prices[\"changefromHigh2\"]*100\n",
+        "prices[\"2derivativefromHigh23\"] = (prices[\"changefromHigh2\"]-prices[\"changefromHigh3\"])/prices[\"changefromHigh3\"]*100\n",
+        "prices[\"2derivativefromHigh34\"] = (prices[\"changefromHigh3\"]-prices[\"changefromHigh4\"])/prices[\"changefromHigh4\"]*100\n",
+        "\n",
+        "prices[\"changefromLow1\"] = shift(\"changefromLow\",1)\n",
+        "prices[\"changefromLow2\"] = shift(\"changefromLow\",2)\n",
+        "prices[\"changefromLow3\"] = shift(\"changefromLow\",3)\n",
+        "prices[\"changefromLow4\"] = shift(\"changefromLow\",4)\n",
+        "prices[\"changefromLow5\"] = shift(\"changefromLow\",5)\n",
+        "prices[\"changefromLow6\"] = shift(\"changefromLow\",6)\n",
+        "prices[\"changefromLow7\"] = shift(\"changefromLow\",7)\n",
+        "prices[\"2derivativefromLow12\"] = (prices[\"changefromLow1\"]-prices[\"changefromLow2\"])/prices[\"changefromLow2\"]*100\n",
+        "prices[\"2derivativefromLow23\"] = (prices[\"changefromLow2\"]-prices[\"changefromLow3\"])/prices[\"changefromLow3\"]*100\n",
+        "prices[\"2derivativefromLow34\"] = (prices[\"changefromLow3\"]-prices[\"changefromLow4\"])/prices[\"changefromLow4\"]*100\n",
+        "\n",
+        "prices[\"changefromvw1\"] = shift(\"changefromvw\",1)\n",
+        "prices[\"changefromvw2\"] = shift(\"changefromvw\",2)\n",
+        "prices[\"changefromvw3\"] = shift(\"changefromvw\",3)\n",
+        "prices[\"changefromvw4\"] = shift(\"changefromvw\",4)\n",
+        "prices[\"changefromvw5\"] = shift(\"changefromvw\",5)\n",
+        "prices[\"changefromvw6\"] = shift(\"changefromvw\",6)\n",
+        "prices[\"changefromvw7\"] = shift(\"changefromvw\",7)\n",
+        "prices[\"2derivativefromvw12\"] = (prices[\"changefromvw1\"]-prices[\"changefromvw2\"])/prices[\"changefromvw2\"]*100\n",
+        "prices[\"2derivativefromvw23\"] = (prices[\"changefromvw2\"]-prices[\"changefromvw3\"])/prices[\"changefromvw3\"]*100\n",
+        "prices[\"2derivativefromvw34\"] = (prices[\"changefromvw3\"]-prices[\"changefromvw4\"])/prices[\"changefromvw4\"]*100\n",
+        "\n",
+        "prices[\"changefromn1\"] = shift(\"changefromn\",1)\n",
+        "prices[\"changefromn2\"] = shift(\"changefromn\",2)\n",
+        "prices[\"changefromn3\"] = shift(\"changefromn\",3)\n",
+        "prices[\"changefromn4\"] = shift(\"changefromn\",4)\n",
+        "prices[\"changefromn5\"] = shift(\"changefromn\",5)\n",
+        "prices[\"changefromn6\"] = shift(\"changefromn\",6)\n",
+        "prices[\"changefromn7\"] = shift(\"changefromn\",7)\n",
+        "prices[\"2derivativefromn12\"] = (prices[\"changefromn1\"]-prices[\"changefromn2\"])/prices[\"changefromn2\"]*100\n",
+        "prices[\"2derivativefromn23\"] = (prices[\"changefromn2\"]-prices[\"changefromn3\"])/prices[\"changefromn3\"]*100\n",
+        "prices[\"2derivativefromn34\"] = (prices[\"changefromn3\"]-prices[\"changefromn4\"])/prices[\"changefromn4\"]*100\n",
+        "prices.replace([np.inf, -np.inf], np.nan, inplace=True)\n",
+        "prices.dropna(inplace = True)\n",
+        "\n",
+        "positivereturn = []\n",
+        "for i in list(prices[\"changefromclose\"]):\n",
+        "  if i>=0: positivereturn.append(1)\n",
+        "  if i<0: positivereturn.append(0)\n",
+        "  else: continue\n",
+        "prices = prices.iloc[:,22:92].copy()\n",
+        "prices = prices.to_numpy()\n",
+        "prices\n",
+        "#create_download_link(prices)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "0BD5ue908Z_6",
+        "outputId": "74c766c4-5b6d-4c9c-ef8e-354c134ab7b8"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[-4.06272853e-02,  2.16631915e-02,  2.70782562e-03, ...,\n",
+              "        -2.77777778e+01,  6.41025641e+01, -1.31250000e+02],\n",
+              "       [ 4.06107862e-02, -4.06272853e-02,  2.16631915e-02, ...,\n",
+              "        -8.71428571e+02, -2.77777778e+01,  6.41025641e+01],\n",
+              "       [ 6.77121421e-02,  4.06107862e-02, -4.06272853e-02, ...,\n",
+              "         1.64035088e+02, -8.71428571e+02, -2.77777778e+01],\n",
+              "       ...,\n",
+              "       [-1.28057370e-02,  3.58432116e-02,  2.30367564e-02, ...,\n",
+              "        -3.00956938e+02, -2.66666667e+01, -2.16666667e+02],\n",
+              "       [ 5.12163892e-03, -1.28057370e-02,  3.58432116e-02, ...,\n",
+              "        -1.32900433e+02, -3.00956938e+02, -2.66666667e+01],\n",
+              "       [-2.56095062e-03,  5.12163892e-03, -1.28057370e-02, ...,\n",
+              "         4.85000000e+01, -1.32900433e+02, -3.00956938e+02]])"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 17
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "counter = 0\n",
+        "for i in positivereturn:\n",
+        "  if i>0:\n",
+        "    counter +=1\n",
+        "counter/len(positivereturn)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "yjTf03FFirMT",
+        "outputId": "544c3eb8-c454-4e3a-8357-0e34f11c0593"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0.5148879485973985"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 14
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "X_train, X_test, y_train, y_test =train_test_split(prices, positivereturn, test_size=0.5, random_state=1)"
+      ],
+      "metadata": {
+        "id": "QArXRy3DcZo6"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "from matplotlib.colors import ListedColormap\n",
+        "from sklearn.metrics import *\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.preprocessing import StandardScaler\n",
+        "from sklearn.datasets import make_moons, make_circles, make_classification\n",
+        "from sklearn.neural_network import MLPClassifier\n",
+        "from sklearn.neighbors import KNeighborsClassifier\n",
+        "from sklearn.svm import SVC\n",
+        "from sklearn.gaussian_process import GaussianProcessClassifier\n",
+        "from sklearn.gaussian_process.kernels import RBF\n",
+        "from sklearn.tree import DecisionTreeClassifier\n",
+        "from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier\n",
+        "from sklearn.naive_bayes import GaussianNB\n",
+        "from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis\n",
+        "classifiers = [\n",
+        "    KNeighborsClassifier(67),\n",
+        " \n",
+        "\n",
+        "    DecisionTreeClassifier(max_depth=5),\n",
+        "    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),\n",
+        "    MLPClassifier(alpha=1, max_iter=1000),\n",
+        "    AdaBoostClassifier(),\n",
+        "    GaussianNB(),\n",
+        "    QuadraticDiscriminantAnalysis()]\n",
+        "for classifier in classifiers:\n",
+        "  model = classifier\n",
+        "  model.fit(X_train, y_train)\n",
+        "  y_pred = model.predict(X_test)\n",
+        "  accuracy = accuracy_score(y_test,y_pred)\n",
+        "  print (accuracy, classifier)\n",
+        "\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "O9qGvpRjcZrA",
+        "outputId": "adb09ffb-4a04-404e-89e8-2d2bc54fa591"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "0.5024290863501019 KNeighborsClassifier(n_neighbors=67)\n",
+            "0.5014887948597399 DecisionTreeClassifier(max_depth=5)\n",
+            "0.5019589406049209 RandomForestClassifier(max_depth=5, max_features=1, n_estimators=10)\n",
+            "0.5116752860053283 MLPClassifier(alpha=1, max_iter=1000)\n",
+            "0.4928694561980881 AdaBoostClassifier()\n",
+            "0.5133991537376587 GaussianNB()\n",
+            "0.5133991537376587 QuadraticDiscriminantAnalysis()\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "### YOUR CODE HERE\n",
+        "layer_sizes=[(10,10),(64,32),(32,64),(5,10),(10,5),(10,2)]\n",
+        "for i in layer_sizes:\n",
+        "  nnet = MLPClassifier(hidden_layer_sizes=i, max_iter= 10000000,random_state=100)  ## How many hidden layers? How many neurons does this have?\n",
+        "  nnet.fit(X_train, y_train)\n",
+        "\n",
+        "# Predict what the classes are based on the testing data\n",
+        "  predictions = nnet.predict(X_test)\n",
+        "\n",
+        "# Print the score on the testing data\n",
+        "  print(\"MLP Testing Set Score:\")\n",
+        "  print(accuracy_score(y_test, predictions)*100,i)\n",
+        "### END CODE"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "CfMeIpMwkWNO",
+        "outputId": "cfe18965-fe15-44ea-c5d7-4be18fa6cbae"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "MLP Testing Set Score:\n",
+            "51.198871650211565 (10, 10)\n",
+            "MLP Testing Set Score:\n",
+            "49.349631719166275 (64, 32)\n",
+            "MLP Testing Set Score:\n",
+            "49.28694561980881 (32, 64)\n",
+            "MLP Testing Set Score:\n",
+            "50.43096693308259 (5, 10)\n",
+            "MLP Testing Set Score:\n",
+            "51.4652875724808 (10, 5)\n",
+            "MLP Testing Set Score:\n",
+            "51.3712584234446 (10, 2)\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import torch\n",
+        "from torch import nn\n",
+        "from torch import optim\n",
+        "\n",
+        "import matplotlib as mpl\n",
+        "from matplotlib import pyplot as plt\n",
+        "class DeepNet(nn.Module):\n",
+        "\n",
+        "  def __init__(self):\n",
+        "    super().__init__()\n",
+        "    self.in_layer = nn.Linear(70,112)\n",
+        "    self.lay2 = nn.Linear(112,224)\n",
+        "    self.lay3 = nn.Linear(224,112)\n",
+        "    self.lay4 = nn.Linear(112,56)\n",
+        "    self.out_layer = nn.Linear(56,1)\n",
+        "\n",
+        "  def forward(self,d):\n",
+        "    x = torch.relu(self.in_layer(d))\n",
+        "    x = torch.relu(self.lay2(x))\n",
+        "    x = torch.relu(self.lay3(x))\n",
+        "    x = torch.relu(self.lay4(x))\n",
+        "    x = torch.sigmoid(self.out_layer(x))\n",
+        "    return x\n",
+        "np.random.seed(1)\n",
+        "torch.manual_seed(1)\n",
+        "\n",
+        "net = DeepNet()\n",
+        "#x_np = torch.tensor(X_train[2], dtype=torch.float32)\n",
+        "#out = net(x_np)\n",
+        "#print(X_train[2])\n",
+        "#print(y_train[2])\n",
+        "#out"
+      ],
+      "metadata": {
+        "id": "TNcRjwJLko30"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "def train(net, loss_fn, train_data, train_labels,tdata,tlabels, n_epochs=500, learning_rate=1e-4, ):\n",
+        "  optimizer = optim.SGD(net.parameters(), lr=learning_rate, weight_decay=1e-4)\n",
+        "  train_loss = []\n",
+        "  test_loss = []\n",
+        "  x_np = torch.tensor(train_data, dtype=torch.float32)\n",
+        "  y_np = torch.tensor(train_labels, dtype=torch.float32)\n",
+        "  xt_np = torch.tensor(tdata, dtype=torch.float32)\n",
+        "  yt_np = torch.tensor(tlabels, dtype=torch.float32)\n",
+        "  for i in range(n_epochs):\n",
+        "    out = net(x_np)\n",
+        "    testout = net(xt_np)\n",
+        "    loss = loss_fn(out, y_np)\n",
+        "    testloss = loss_fn(testout, yt_np)\n",
+        "    optimizer.zero_grad()\n",
+        "    loss.backward()\n",
+        "    optimizer.step()\n",
+        "    train_loss.append(loss.item())\n",
+        "    test_loss.append(testloss.item())\n",
+        "\n",
+        "  return train_loss, test_loss, testout, yt_np\n"
+      ],
+      "metadata": {
+        "id": "VBYx55uCk3Sr"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from sklearn.metrics import *\n",
+        "np.random.seed(6)\n",
+        "torch.manual_seed(6)\n",
+        "net = DeepNet()\n",
+        "loss_fn = nn.MSELoss()\n",
+        "loss, testloss, testout, yt_np = train(net,loss_fn,X_train,y_train,X_test,y_test)\n",
+        "plt.plot(loss)\n",
+        "plt.plot(testloss)\n",
+        "plt.show()\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 320
+        },
+        "id": "2CgzMPJ6k4Ef",
+        "outputId": "a3c009ab-0b4c-4d94-c656-bdc3faed4e07"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "/usr/local/lib/python3.7/dist-packages/torch/nn/modules/loss.py:520: UserWarning: Using a target size (torch.Size([6381])) that is different to the input size (torch.Size([6381, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.\n",
+            "  return F.mse_loss(input, target, reduction=self.reduction)\n"
+          ]
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "iVBORw0KGgoAAAANSUhEUgAAAYAAAAD4CAYAAADlwTGnAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAADh0RVh0U29mdHdhcmUAbWF0cGxvdGxpYiB2ZXJzaW9uMy4yLjIsIGh0dHA6Ly9tYXRwbG90bGliLm9yZy+WH4yJAAAgAElEQVR4nO3dd3hUVfrA8e+bTglBSOgtQOggJfQEkN4EFAsICoL05rK66i6766Kuu64/lSYgzYKAFUQ6KiX0BIhAQCCEXkPoLSHJ+f1xLxoxQCCTTDLzfp5nnsycuffOezDOm3POPeeIMQallFLux8PZASillHIOTQBKKeWmNAEopZSb0gSglFJuShOAUkq5KS9nB3A/AgMDTbly5ZwdhlJK5Spbt249a4wJur08VyWAcuXKERUV5ewwlFIqVxGRw+mVaxeQUkq5KU0ASinlpjQBKKWUm9IEoJRSbkoTgFJKuSlNAEop5aY0ASillJtyjwSwZRrE/ujsKJRSKkdx/QSQchO2fgKzH4eV/4DkJGdHpJRSOYLrJwBPb+i/Auo9D+vHwcx2cC7O2VEppZTTuX4CAPDJC49+AE99CucOwJRmsONLZ0ellFJO5R4J4JZqXWHweihWA74dAPMHQ+JlZ0ellFJO4RYJ4OK1m6Sm2nsfFywNfRZB81dhxxcwtRmc2O7cAJVSyglcPgHcTEnluVlb6P9JJOev2gPAnl7wyGtWIkhOhOltYMMESE11brBKKZWNMpQARKS9iOwVkVgReTWd9weLyE4RiRaRdSJSLc17tURko4jE2Mf42eWr7WtG248ijqvWb7w8hCfqlmR9bAKdxkew7cj5394s1xQGr4NK7WDFGJjzJFw5kxVhKKVUjnPPBCAinsAkoANQDeiZ9gveNscYU9MYUxt4B3jPPtcLmA0MNsZUB1oAN9Oc18sYU9t+ZMk3r4jwbONyfD2kMR4ewlNTNjJj3UGMsbuE8haCp2dDp/fg0DqY3FTnDCil3EJGWgANgFhjTJwxJgmYB3RNe4Ax5lKal/kA+9uVtsAOY8zP9nEJxpiUzId9/2qVKsjiEeG0qFyENxbtZvDsrVy8buciEajfHwasgryFrTkDi1+CxCvOCFUppbJFRhJASeBomtfH7LLfEZFhInIAqwUw0i6uBBgRWS4i20TkL7edNsvu/vm7iMgDxH9fAvJ6M+25evytY1V+2HOGRyesY9fxi78dULQaDFwFDYdA5HSY3AQORmR1WEop5RQOGwQ2xkwyxlQAXgHG2MVeQBjQy/75mIi0st/rZYypCYTbj2fTu66IDBSRKBGJio+Pz3ScIsKAZuX5clAjbqak8viHG5i96fBvXULeeaDDf+D5JSAe8ElnWPKytgaUUi4nIwngOFA6zetSdtmdzAO62c+PAWuNMWeNMdeAJUBdAGPMcfvnZWAOVlfTHxhjPjLGhBpjQoOC/rCn8QOrV7YQi0eG07hCYcYs2MWoedFcSUz+7YCyTWDIBqs1sGWatgaUUi4nIwkgEggRkWAR8QF6AAvTHiAiIWledgL228+XAzVFJK89INwc2C0iXiISaJ/rDXQGdmWuKvevUD4fZvWtz8vtKrNoxwm6TFjHL6fSDGf45P1ja0DHBpRSLuKeCcAYkwwMx/oy3wN8aYyJEZGxItLFPmy4fZtnNDAa6GOfex7rjqBIIBrYZoxZDPgCy0Vkh11+HJjm2KpljIeHMOyRinz+QiMuJybTbdJ6voo6+vuD0rYGIqfD5MYQ+4MzwlVKKYeRX/u+c4HQ0FATFRWVZdc/c/kGo+ZGszEugSfrlWJs1xrk8fH8/UGHN8LCEZCwH2r1gPZvW7eSKqVUDiUiW40xobeXu/xM4PtRxN+P2S80ZGTLiny97RjdJq3nQPxt3T1lG1uTx5q9DLu+hon1YefXkIsSqVJKgSaAP/D0EEa3rczHzzcg/koiXSas47vo28a8vf2g5RgYtBYeKgvf9Ic5T8OFo+lfVCmlciBNAHfQvFIQi0eGUbV4AUbNi+a1b3dwPem2OWxFq0P/ldDubTgUAR82gs0f6ZpCSqlcQRPAXRQPyMPcgY0Y3LwCc7cc5dGJ69h94tLvD/LwhMZDYegmKN0Alr5sbTpz5hfnBK2UUhmkCeAevD09eLVDFWb3b8jF6zfpNmk9s9anWUvolofKQu9v4bGp1gDxlDBY/R/dglIplWNpAsigsJBAlo0KJywkkH99v5v+n0SRcCXx9weJwMM9YFgkVO8Gq9+29hs4usU5QSul1F1oArgPhfP7MqNPKK8/Wo11sWdpPy6CiP3pLE+RPwi6T4dnvrJ2HJvRFpb8RXcfU0rlKJoA7pOI0LdpMN8Na0pAHm+enbGFt5fsISk5nYHfSm1h2CZoMAC2fAQfNob9K7M/aKWUSocmgAdUtXgBvh8eRs8GZZi6No4npmzg0NmrfzzQ1x86/g/6LQfvvPD5E/DNALh6NvuDVkqpNDQBZEIeH0/efrwmU3rX5XDCNTqNj+Cbrcf+OEAMUKYhDI6AFq9BzHxrAtnPX+gEMqWU02gCcID2NYqzdFQ41UsG8OevfubFL6K5fOPmHw/08oUWr1qJoHAFmD/QahFcOJL9QSul3J4mAAcpUTAPcwc0YnSbSizacZKOt+8/nFaRqlaXUId3rLWFJjWCTVMg1SmbpSml3JQmAAfy9BBGtgrhy0GNSE2FJ6dsZNKqWFJS0+nm8fCEhoNg2GZrtdFlr1h3C53enf2BK6XckiaALFCvbCGWjAqnQ41i/G/5XnpP38ypizfSP7hgaej1FTw+Hc4ftOYNrPo3JCemf7xSSjmIJoAsEpDHmwk96/BO91pEH71A+3FrWRFzKv2DRaDWk9YEshqPw5r/wpRwOLI5e4NWSrkVTQBZSER4qn5pFo0Mo2TBPAz8bCt/X7CLGzfv0NefrzA8/hH0+gZuXrPWFFr8Ety4lP7xSimVCZoAskGFoPx8O7QJL4QF89mmw3SduJ69p+4yKziktbW4XMPB1g5kHzaCfcuzL2CllFvQBJBNfL08GdO5Gh8/X5+Eq4l0mbiOzzYeSn/OAIBvfms/4hd+AL8AmPMUfN0PrqSz9IRSSj0ATQDZrEXlIiwd1YxG5Qvz9+9iGPjZVs5fvcuKoaVCYeAaeORvsOd7mFQfoufqBDKlVKZpAnCCIH9fZvWtz5hOVVm99wwdx0ewOS7hzid4+UDzv8CgCAisBAsGw+zH4fyhbItZKeV6NAE4iYeH8EJ4eb4d0hRfLw96TtvE+yv3kZxyl93EilSB55dBx3etJaY/bAwbJ+kEMqXUA9EE4GQ1SwWwaGQ43eqUZNyP+3lm2mZOXLh+5xM8PKzVRYdthnLhsPyvML01nNqVfUErpVyCJoAcIL+vF+89VZv3n36YmBMX6TAugmW77jBn4JaAUvDMF9B9hrWW0EfN4cc34OYdJpwppdRtNAHkII/VKcXikeGUKZSXwbO3MmbBzjvPGQBrAlnNJ2B4JNR8EiLetbaiPLwh+4JWSuVamgBymHKB+fhmSBMGhAcze9MRuk5cz77T99hJLG8heGyKtSdxSiLM6gCL/qQTyJRSd6UJIAfy8fLgb51+P2dgzuYjd54zcEvFVtYEssbDYevHMKkh/LIkW2JWSuU+mgBysBaVi7BkVDj1yxXir/N3MmzONi5eS2efgbR88kG7t6D/D5DnIZjXE77qC1fOZEvMSqncQxNADlfE349Pnm/Aqx2qsCLmNB3HR7D18Ll7n1iqHgxaAy3HwC+LrdbAjq90AplS6leaAHIBDw9hcPMKfDW4MR4e8NTUTUz8aX/6+wyk5ekNzV6GweusHci+fQHm9oRLJ7IncKVUjqYJIBepU+YhFo8Mp1PN4ry7Yt/d9xlIK6iytQNZu39D3GprB7Jtn2lrQCk3pwkglyng5824HrV55wlrn4EO49by457T9z7RwxMaD4Mh66FYTVg4HD57DM4fzvqglVI5kiaAXEhEeCq0NN+PCKNYQB76fxLF6wtjSEzOwJIQhStAn++h0//BsUhrOYkt0yD1LktQKKVckiaAXKxikfzMH9qE55uW4+MNh3hs0gYOxF+594keHlD/BRi6Eco0hCUvwcedIOFA1getlMoxNAHkcn7envzz0erM6BPKyYvXeXTCOr6KOnrvOQMABctYk8e6ToIzMTC5CWyYoIvLKeUmNAG4iFZVi7J0VDNqlQrg5a93MGpeNJdv3GPOAFjLSdTpDUM3Q4WWsGIMzGgDZ/ZkfdBKKafSBOBCigX48fkLjXipbSUW7zxJp/HriD56IWMnFygOPeZYi8udOwhTm8Ha/0FKBpKIUipX0gTgYjw9hOEtQ/hyUCNSUg1PTN7AlDUHSL3XnAH4bXG5YVugSmf46U2Y9gic3JH1gSulsp0mABdVr2whlowMp231ovxn6S88N3MLZy5lcKno/EHw5Cx4era1hMS0R6ylppMTszZopVS20gTgwgLyejPpmbq8/XhNog6fo8O4CFbtvY81gao+ai0uV/Mpa6npqc3gWFTWBayUylYZSgAi0l5E9opIrIi8ms77g0Vkp4hEi8g6EamW5r1aIrJRRGLsY/zs8nr261gRGS8i4rhqqVtEhJ4NyvD98DCC/H15flYkbyzanbE5A2AvNT0Zen0NiZetAeKV/9SNZ5RyAfdMACLiCUwCOgDVgJ5pv+Btc4wxNY0xtYF3gPfsc72A2cBgY0x1oAVwa1RxMjAACLEf7TNdG3VHIUX9WTCsKX0al2XGuoN0n7yBuIzMGfj1Am2s1kCdZ2H9B9YOZMe3Zl3ASqksl5EWQAMg1hgTZ4xJAuYBXdMeYIxJu/NIPuDWiGNbYIcx5mf7uARjTIqIFAcKGGM2GeuG9U+Bbpmsi7oHP29P/tW1BtOeC+XY+et0vp85AwB+BaDLeOj9jbXZzPQ2sPIfkHQ1awNXSmWJjCSAksDRNK+P2WW/IyLDROQAVgtgpF1cCTAislxEtonIX9Jc89i9rqmyRptqRVn2IHMGbqnY2ppFXLsnrB9nLS63d2nWBayUyhIOGwQ2xkwyxlQAXgHG2MVeQBjQy/75mIi0up/rishAEYkSkaj4+HhHhev2bp8z0HF8BNuPnM/4BfIUtGYQP7/U2oRmbg+Y1wsuHL33uUqpHCEjCeA4UDrN61J22Z3M47funGPAWmPMWWPMNWAJUNc+v1RGrmmM+cgYE2qMCQ0KCspAuCqj0s4ZSE2FJ6dsZPLqDM4ZuKVsExi0Flq/DrE/wqQGVqtAJ5ApleNlJAFEAiEiEiwiPkAPYGHaA0QkJM3LTsB++/lyoKaI5LUHhJsDu40xJ4FLItLIvvvnOeC7TNZFPaB6ZQuxZFQ47aoX47/L7nPOAICXD4T9CYZvgfItrHGBqc3g8MasClkp5QD3TADGmGRgONaX+R7gS2NMjIiMFZEu9mHD7ds8o4HRQB/73PNYdwRFAtHANmPMYvucocB0IBY4AGgnshMF5PFm4jN1+G93a85A+3ERrPrlPvcRLlgGes61lpRIvAyz2sN3w+BqQtYErZTKFMnwHSA5QGhoqImK0olIWS32zGWGz9nOL6cu069pMK90qIyvl+f9XSTpKqz5L2ycBL4FoM2/oHZvaylqpVS2EpGtxpjQ28v1/0b1BxWLWHMG+jYpx8z1BzO+z0BaPvmgzVgYFGFtSblwBMzqAKdjsiZopdR90wSg0uXn7cnrXaoz/Tlrn4HO49fx5f3MGbilaDXou8S6Y+jsPpgSbi05nXifCUUp5XCaANRdta5m7TNQu3RB/vL1DkbOi+bS/cwZAKvbp05vGLEV6vSyNp2Z1BD2LNKN6ZVyIk0A6p6KBfgx+4WGvNyuMkt2nqTjuAi23c+cgVvyFoIuE6DfcvALgC96WfMHdGN6pZxCE4DKEE8PYdgjFflyUGOMseYMTFoVe39zBm4p0wgGrYG2b8LBCKs1EPEeJCc5PnCl1B1pAlD3pV7Zh1gyKpz2NYrxv+V76T1jM6fvZ87ALZ7e0GSENXegYiv48V8wNRwOrXN80EqpdGkCUPctII83E3tacwa2H7lA+w/Wsjzm1ANerBT0+Bye+RJuXoOPO8H8wXBFl/1QKqtpAlAPRER4un4Zvh8RRomCeRj02VZGzdvO+asP2I1TqZ21MX3YaNj5NUwMhahZkJrq2MCVUr/SBKAypWKR/CwY1pQXW4eweMdJ2ryfidaAT15o/U8Ysh6K1oBFL8LMdnBqp2ODVkoBmgCUA3h7evBi60osHB5GEX9fBn22lZFzM9EaCKoMfRfBY1PhXBxMbQ7L/motL6GUchhNAMphqpUowHfDm/Kn1pVYsvMkbd5fw7JdD9gaEIGHe8DwSKj7HGz6ECY2gN3f6dwBpRxEE4ByKG9PD0a1DmHh8DCKFvBj8OxMtgbyFoJHP4D+KyFfYfjyOfj8STh30LGBK+WGNAGoLFGtRAEWDGvK6DaVWLork60BgNL1YcBqaPc2HNkIHzaCtf+D5ESHxayUu9EEoLKMt6cHI1v9vjUwYu52zj1oa8DTCxoPtbqFKrWDn96EyU3h4FrHBq6Um9AEoLJc1eK/tQaW7TpJ28y2BgqUgKc+hV7fQOpN+ORR+LIPXDjiuKCVcgOaAFS2cHhrACCkNQzdBC1eg33LYWJ9+Oktay8CpdQ96YYwKtvdTEll8uoDTPhpPwF5vHmzWw3a1yieuYtePAYr/wm7vgb/EtYGNDWftO4mUsrN6YYwKsdI2xooFuDH4NnbMt8aCCgFT8ywVhrNXwS+HQAz2sLxrY4LXCkXowlAOU3V4gWYP7Qpf/7d2MDJzF20TCMYsMragOb8IZjWEhYMhcuZGHNQykVpF5DKEfacvMTLX//MruOX6FyrOGO71qBQPp/MXfTGJYj4P2sSmacPhP8ZGg0Fbz/HBK1ULnGnLiBNACrHuJmSytQ1Bxj3434K+FljAx1qZnJsACDhAKz4O+xdDA+Vg7ZvQZVOOj6g3IaOAagcz9vTg+EtQ/h+RBjFC/ox5PNtDJ+zjYQrmZzsVbgC9JwDzy4ArzzWTmSfdtEN6pXb0wSgcpwqxayxgZfaVmJ5zCnavr+WpTszOTYAUOERGLwOOr4LJ3fAlDBY/Ge4di7z11YqF9IuIJWj/XLqEi99ZY0NdKpVnLFdqlM4v2/mL3ztHKx+GyJngK+/NZegfn9rpzKlXIyOAahc6/axgTe61aCjI8YGAM7sgWWvQtxqCKwM7f8NFVs75tpK5RA6BqByrVtjA4tGhFOiYB6Gfr6NYZ87YGwAoEhVa2ygx1xISYLZ3WHO09bAsVIuTlsAKldJTkll6to4PvhhHwX8vPn34zVpV72Ygy6eCJunwJr/QfINaDQYmr0MfgGOub5STqItAOUSvDw9GPZIRRaNCKdYgB+DPtvK6C+juXj9pgMu7gtNR8GIrfDw07BhIkyoB9s+hdSUzF9fqRxGE4DKlSoX82f+0KaMbFmR76JP0P6Dtazbf9YxF/cvas0kHrgKClWAhSPgoxZweINjrq9UDqEJQOVaPl4ejG5bmW+GNCGvjye9Z2zmH9/t4lpSsmM+oEQd6LcMus+AawkwqwN89TxcOOqY6yvlZDoGoFzCjZspvLNsLzPXH6Rc4bz831O1qVf2Icd9QNI1WD/OemCgyUhoOtK6hVSpHE7HAJRL8/P25B+PVmPugEbcTDE8OWUD/132C4nJDuq798kLj7xm7UZWpROsfQfG14Et0yDFAeMPSjmBJgDlUhpXKMyyF8N5sl5pJq8+QNeJ69l94pLjPqBgaXhiJrzwkzVvYMlLMKkhxCyAXNSaVgo0ASgX5O/nzX+fqMXMvqEkXE2i66R1TPxpP8kpqY77kFL1oO8ieOZLa6XRr/rAjDY6UKxyFU0AymW1rFKUFS82o131Yry7Yh/dJ28g9sxlx32AiLU5/ZD10GWitSvZrA4wtyfE73Xc5yiVRXQQWLmFxTtOMmbBTq4mpfBS20r0DyuPp4eDl4NOugabJ8O6DyDpirX3QMsx4J3HsZ+j1H3StYCU24u/nMjf5u9kxe7T1Cv7EO8++TDBgfkc/0FXE+CnsbD1YygcAl0mQNnGjv8cpTJI7wJSbi/I35epz9bjg6drs//0ZTqMW8vMdQdJTXXwH0H5CsOj4+DZ+XDzOsxqD9Nbw57vdaBY5SiaAJRbERG61SnJytHNaVy+MGMX7abntE0cSbjm+A+r0BKGbYIO71gTyb7oDTPbwZHNjv8spR5AhhKAiLQXkb0iEisir6bz/mAR2Ski0SKyTkSq2eXlROS6XR4tIlPSnLPavuat94o4rlpK3V3RAn7M7Fufd56oxe4Tl2g/bi2zNx3G4V2ivv7QcBAMi7RaBecPwcy28MWzuuKocrp7jgGIiCewD2gDHAMigZ7GmN1pjilgjLlkP+8CDDXGtBeRcsAiY0yNdK67GnjJGJPhTn0dA1BZ4cSF67zyzQ4i9p8lrGIg/32iFiULZtHAbeIV2DjJmlGckgih/aHFq5C3UNZ8nlJkbgygARBrjIkzxiQB84CuaQ+49eVvywdoR6fKNUoUzMOn/Rrw1mM12HbkPO3eX8sXkUcc3xoA8M0PLV6BkduhzrMQOQ3G14YNE6zlqJXKRhlJACWBtKtfHbPLfkdEhonIAeAdYGSat4JFZLuIrBGR8NtOm2V3//xdRNK9J09EBopIlIhExcfHZyBcpe6fiNCrYVmWv9iMGiUL8Mo3O+n3cSRnLt3Img/0LwqPfgBDNkCpBrBiDExqoDOKVbZy2CCwMWaSMaYC8Aowxi4+CZQxxtQBRgNzRKSA/V4vY0xNINx+PHuH635kjAk1xoQGBQU5Klyl0lW6UF7mvNCI1x+txsa4BNqPi2Dl7tNZ94FFqkLvr6H3t+Cd15pRPLM9HNOuTpX1MpIAjgOl07wuZZfdyTygG4AxJtEYk2A/3wocACrZr4/bPy8Dc7C6mpRyOg8PoW/TYBaNCKN4gB8DPo3ir/N3Om6Z6fRUbAWD11kDxefiYHor+Lo/XDiSdZ+p3F5GEkAkECIiwSLiA/QAFqY9QERC0rzsBOy3y4PsQWREpDwQAsSJiJeIBNrl3kBnYFdmK6OUI1UsYm06M6h5eeZuOULnCevYeexi1n2ghyfU6wsjt1lbUf6yGCaEwg+vww0HLminlO2eCcAYkwwMB5YDe4AvjTExIjLWvuMHYLiIxIhINFZXTx+7vBmwwy7/GhhsjDkH+ALLRWQHEI3VopjmyIop5Qg+Xh681qEqn/dvyLXEFB77cD2TVx8gxdGTx9Ly9beWkBgRBdUfg3XvW0tPR86AlCxshSi3o0tBKJVBF64l8dq3O1m66xSNyhfivadqUyKrbhdN68R2WD4GDq+DoCrQ5g0IaWMtRqdUBuhSEEplUsG8PnzYqy7vPFGLHccu0v6DtSzecTLrP7hEHWvp6ac/tzafmfMkfPYYnNJeU5U5mgCUug8iwlOhpVkyMpzgoPwMm7ONP3/5M1cSs7hrRgSqdoahm6D9f6xWwdRw+G44XM7Cu5SUS9MuIKUe0M2UVCb8uJ+Jq2Ip9VBexvesQ+3SBbPnw6+fh7Xvwuap4OVrDRo3GmI9V+o22gWklIN5e3owum1lvhjUmJRUwxOTNzBlzQHHry6anjwPQbu3YNhmCG4GP/wTPmwEe5fpRDKVYZoAlMqk+uUKsWRkOG2rF+U/S3/huZlbsm4G8e0KV4Cec6H3N+DhBXOfhtnddXxAZYgmAKUcICCvN5Oeqcvbj9ck6vA5OoyLYNXeM9kXQMXW1rIS7d6G41thShjMH2JtU6nUHWgCUMpBRISeDcrw/fAwgvx9eX5WJG8u2k1ickr2BODpDY2HwqhoaDICdn0D4+vCyn/A9QvZE4PKVXQQWKkscONmCv9esodPNx6mRskCjO9Rh/JB+bM3iAtHYdVb8PM88AuwBonrvwD5ArM3DuV0uiewUk6wIuYUf/lmB0nJqbzRtQaP1y3JHRa+zTond8BPb8L+5eDlB3V6Q7O/WCuSKregCUApJzl58Tovzotm88FztK1WlLFda1AswC/7A4nfCxsnQvQc8PSFJsOtriJf/+yPRWUrTQBKOVFKqmF6RBzvrdyHj6cHr3WsSo/6pfHwcMJyDgkH4MexsHsB5AuC5q9Yi9B5emd/LCpbaAJQKgc4dPYqf52/kw0HEmgYXIi3H6+Z/WMDtxyLsgaID6+HQhWg1T+gWlddY8gF6UQwpXKAcoH5+PyFhrzTvRZ7Tl6i/bgIJq2K5WZKavYHUyoU+i6Gnl+Ap4+1Gc2MNnB4Q/bHopxCWwBKOcmZyzd4fWEMS3aeokoxf/7TvVb2LSVxu9QUa2xg1b/h8gmo1AFavw5FqjgnHuVQ2gWkVA61IuYU//guhtOXb9C3STlealuZfL5ezgkm6RpsngzrPoCkK9BgEDzyV/ArcO9zVY6lCUCpHOzyjZu8s2wvszcfpkRAHt7sVoNHqhRxXkBXE6w5BFEzIX9Ra92hGt11fCCX0jEApXIwfz9v3uhWg68HNyavjyfPfxzJ8DnbiL+c6JyA8hWGzu/BgB+hQHH4pr/1SLzsnHhUltAEoFQOUq9sIRaPDGd0m0qsiDlNm/fXsHZfvPMCKlkPXvjRukMoZj589Aic2um8eJRDaQJQKofx8fJgZKsQlowKp1gBP/rO2sL87U5c1M3DE8L/DM8thBsXYUo4fDsQzh9yXkzKITQBKJVDVSySn2+GNKFBcCH+9MXPvLFoN9eTsmlhufQEh1v7DzQdCbsXwoRQWPoKXD3rvJhUpuggsFI53I2bKby9ZA+fbDxMqYfy8K8u1WlV1cnr+Fw6Aav/A9s/A+980HCQ9cjvxIFrdUd6F5BSudzmuATGLNjF/jNXaFutKP/sUp2SBfM4N6j4fbDqTatF4OkDD/ew1hcKDHFuXOp3NAEo5QJupqQyY91Bxv2wH4BRrUPoHxaMt6eTe3PPxv620FxKElTuaHUVlW6ot47mAJoAlHIhx85f41/f72bl7tNUKpqfN7vVpEFwIWeHBVfiYctHEDnN2ri+eG1oOBhqPK4b1juRJgClXNAPu0/zz4UxHL9wne51S/HXjlUonD8HfNEmXYWf58Lmj+DsXsgbaD5R5boAABJaSURBVK04Wr8/FCjh7OjcjiYApVzU9aQUJvy0n2kRceT18eKV9lWct9T07YyBg2tg81TYu9S6pbTqo1arQLuHso0mAKVcXOyZy4xZsItNceeoXbogb3arQY2SAc4O6zfnDkLkdOvOoRsXoVgt686hGt3B28mD2S5OE4BSbsAYw4Lo47y1eA/nribRp0k5RrephL9fDtrsJekq7PjSahXE7wG/glC7F4T2g8CKzo7OJWkCUMqNXLx2k3dXWIvLBeX35e+dq9G5VvHs34/4boyBQ+sgagbs+R5SkyG4uTVOULmj7lDmQJoAlHJDPx+9wJgFu9h5/CLhIYGM7VqD4MB8zg7rjy6ftrqGtn4MF49C/mJQ9zmo1wcCSjk7ulxPE4BSbiol1TB702HeXb6XxJRUhjSvwJAWFfDz9nR2aH+UmgL7V1qtgv0rrUHiSh2gfj8o3xI8dPWaB6EJQCk3d+byDd5avIfvok9QtnBexnatQfNKQc4O687OH7ZaBNs/g6vx8FA5qPc81OkN+QKdHV2uoglAKQXA+tiz/H3BLuLOXqVjzWKM6VSNEs5eUuJukpNgz0Jrc5rD660lJ6p1s8YK9FbSDNEEoJT6VWJyCtPWxjFxVSyCMKJVRV4IK4+PVw7vYjmzx0oEP8+DxEtQtIaVCGo+Bb75nR1djqUJQCn1B8fOX+ONRbtZHnOa8kH5GNulBmEhuaB7Jekq7PwKtkyH0zvBtwA83BPqvwBBlZwdXY6jCUApdUer9p7h9YUxHE64RqeaxRnTuSrFA3Jwt9AtxsDRLdYEs90LrIXogptZiaByJ/D0cnaEOYImAKXUXd24+Vu3kKeHMLJVCP2aBuf8bqFbrsTD9k8hapZ1K6l/CWv9oXp9wL+Ys6NzKk0ASqkMOXruGmMX/bbS6LtPPkytUgWdHVbGpabAvuVWq+DAj+DhZa0/VH8AlG3iloPGmgCUUvflxz2n+dv8XcRfSWRI8wqMah3i/H0H7lfCAWvQ+Nb6Q8UfhsbDofpjbjXT+E4JIEP/NUWkvYjsFZFYEXk1nfcHi8hOEYkWkXUiUs0uLyci1+3yaBGZkuacevY5sSIyXnLUHHWlVKuqRVn+p2Y8VqckE1fF0mv6Zs5eSXR2WPencAVo9xaM/gU6fwA3r8O3A+CDWtaWlpdOOjtCp7pnC0BEPIF9QBvgGBAJ9DTG7E5zTAFjzCX7eRdgqDGmvYiUAxYZY2qkc90twEhgM7AEGG+MWXq3WLQFoJRzfBd9nL98vYOiBfz4pF+DnLmcREakplrdQpsmWz/FE6p0hND+1jpELjrTODMtgAZArDEmzhiTBMwDuqY94NaXvy0fcNesIiLFgQLGmE3GykCfAt0yEItSygm61i7JvIGNuJKYTPfJG9gcl+DskB6MhweEtIFnv4WR26HxMDi0Hj7rBhNDYcMEuHbO2VFmm4wkgJLA0TSvj9llvyMiw0TkAPAO1l/2twSLyHYRWSMi4Wmueexe17SvO1BEokQkKj4+PgPhKqWyQp0yD/HtkCYUzOPNM9M3Mz0ijtTU3DOG+AeFykPbN2D0HnjsI2t5iRVj4P+qwPzB1u2luWiM9EE4rL1jjJlkjKkAvAKMsYtPAmWMMXWA0cAcESlwn9f9yBgTaowJDQrKweuWKOUGygXm47vhTWldtQhvLt5Dtw/Xs/VwLv+L2dsPHn4a+q+AweuttYb2fA8z2sCUcIicAYmXnR1llshIAjgOlE7zupRddifzsLtzjDGJxpgE+/lW4ABQyT4/7Rqv97qmUiqH8PfzZkrverz/9MOcvnSD7pM3MuzzbcTFX3F2aJlXrAZ0fg/+/At0ft8qWzzaahUs+hOc2uXc+BwsI4PAXliDwK2wvqQjgWeMMTFpjgkxxuy3nz8K/NMYEyoiQcA5Y0yKiJQHIoCaxphz6QwCTzDGLLlbLDoIrFTOci0pmSlr4pgeEUdicipPhZZmVKsQigX4OTs0xzAGjkVZt5LGfAvJN6BUA2v9oWrdrNZDLpCpeQAi0hH4APAEZhpj3hKRsUCUMWahiIwDWgM3gfPAcGNMjIh0B8ba5alYieF7+5qhwMdAHmApMMLcIxhNAErlTPGXE5m0KpbPNx/GQ4S+TcsxpHkFCub1cXZojnPtHPw810oGCbGQ56HftrIsXMHZ0d2VTgRTSmW5o+eu8f7KfcyPPk5+Xy8GN6/A803LkdfHhdbkMQYOrrUSwS+LcsVWlpoAlFLZ5pdTl3h3+V5+2HOGIH9fhrWoQI8GZXLmLmSZcfmUvZXlJzl6K0tNAEqpbBd16BzvLN/LloPnKOLvy+DmFXimoQsmgnS3smxvdQ9VaOX0CWaaAJRSTrPxQAIf/LCPzQfPEeTvy6Bm5enVsCx5fFwsEYC1leW2T2Dbp9ZWlgXL2FtZPgv5nXMruyYApZTTbYpLYNwP+9kYl0BgfjsRNCrjWmMEtyQnWWMEUTPhUAR4eEO1LlaroGzTbF2VVBOAUirH2HLwHON+3Mf62AQC8/vQP6w8vRuVwd8v5w2gOkT8PnsryznWqqSBla1E8HAPyJP1S21rAlBK5ThRh84x/qdY1u6Lp4CfF32alKNvk3IUzu/r7NCyRtI1iJlvjRUc3wpeeaBmd2sxupJ1s+xjNQEopXKsnccu8uHqWJbFnMLXy4OeDcowILw8JQrmgm0pH9SJaKtVsPMruHkNite2WgU1nwAfx662qglAKZXjxZ65zOTVcSyIPo6HwON1SjG4RYXcu/x0Rty4CDu+tJLBmd32Bvc9rIHjotUc8hGaAJRSucbRc9eYFhHHF5FHuZmSSoeaxRnaogLVSwQ4O7SsYwwc3WwtPndrg/tSDax9jas/Bj55H/jSmgCUUrlO/OVEZq4/yGcbD3MlMZlHKgcx7JGKhJYr5OzQstbVBNgxD7Z+DGf3gW8ADI8E/6IPdDlNAEqpXOvi9Zt8tvEQM9cf4tzVJBoEF2Joiwo0rxSES+8mawwc2QgHVkHLvz3wZTQBKKVyvWtJyXwReZSP1sZx8uINqpcowLBHKtKuejE8PVw4EWSSJgCllMtISk5l/vZjTFkTx8GzVykflI/BzSvQrXZJfLxcc1/fzNAEoJRyOSmphqW7TjJp1QH2nLxEiQA/BjYrz9P1y7jmMhMPSBOAUsplGWNYvS+eD1fFEnnoPIXz+dAvLJjejcoSkMdFZxffB00ASim3sOXgOT5cHcvqvfH4+3rxbOOy9AsLJtBVZxdngCYApZRb2XX8IpNXH2DJrpP4eFqzi//UppJbtgg0ASil3NKB+CtMWX2Ab7YdIzC/L+89VZuwkEBnh5Wt7pQAdLhcKeXSKgTl539PPsyCYU3x9/Oi94zN9PhoI2v3xZOb/gDOCpoAlFJuoVapgnw/Iowxnapy8OxVnpu5hS4T17Ns10lSU90zEWgXkFLK7SQmpzB/23EmrznA4YRrlA/Kx8Dw8jxWtyS+Xq53+6iOASil1G2SU1JZsusUU9ccIObEJYL8fenbpBy9G5YlIK/rDBZrAlBKqTswxrA+NoGpaw8Qsf8s+Xw86dmgDP3Cgl1iTwJNAEoplQExJy4ybW0c3+84iQBdHi7BwOblqVKsgLNDe2CaAJRS6j4cO3+NGesO8kXkUa4lpdC8UhCDmpencfnCuW4FUk0ASin1AC5cS2L2psN8vOEQZ68kUbNkAIOal6d99WJ4eeaOGyk1ASilVCbcuJnCt9uOMy3CWoG01EN56Nc0mKfqlya/r5ezw7srTQBKKeUAKamGlbtPMz0ijqjD5/H38+KZBmXo06Rcjh0w1gSglFIOtv3IeaavO8jSnSfxEKFTreIMCC9PjZI5a+9iTQBKKZVFjp67xscbDvFF5FGuJCbTMLgQA8LL07JKETxywE5lmgCUUiqLXbpxky+2HGXW+oOcuHiD8oH56BcWTPe6pZy6QY0mAKWUyiY3U1JZuusU0yPi2HHsIg/l9aZ3o7I827gsRfz9sj0eTQBKKZXNjDFEHjrPtIg4fthzGm8PD7rWLkH/8OBsnVh2pwSQs+9dUkqpXExEaBBciAbBhTh49ioz1x3kq61H+WrrMcJDAnkhvDzNQgKdNrFMWwBKKZWNzl9NYs6WI3y84RDxlxOpXNSf/uHBdK1dIstWItUuIKWUykESk1P4/ueTTI+I45dTlwnM70ufxmXp1agshfL5OPSzNAEopVQOdGsl0mkRcazZF4+ftwfd65aiX1gwFYLyO+QzdAxAKaVyIBEhLCSQsJBA9p2+zIyIg3wVdYzPNx+hVZUi9A8PzrIF6LQFoJRSOUz85UQ+23SY2ZsOc+5qEtWKF+DjfvUf+BbSTG0KLyLtRWSviMSKyKvpvD9YRHaKSLSIrBORare9X0ZErojIS2nKDqU5R7/VlVLKFuTvy+g2ldjwakv+83hNShfKQ2A+X4d/zj1bACLiCewD2gDHgEigpzFmd5pjChhjLtnPuwBDjTHt07z/NWCAzcaYd+2yQ0CoMeZsRoPVFoBSSt2/zLQAGgCxxpg4Y0wSMA/omvaAW1/+tnxYX/a3PrgbcBCIeZDAlVJKZY2MJICSwNE0r4/ZZb8jIsNE5ADwDjDSLssPvAL8K53rGmCFiGwVkYF3+nARGSgiUSISFR8fn4FwlVJKZYTDtrMxxkwyxlTA+sIfYxe/DrxvjLmSzilhxpi6QAdgmIg0u8N1PzLGhBpjQoOCghwVrlJKub2M3AZ6HCid5nUpu+xO5gGT7ecNgSdE5B2gIJAqIjeMMRONMccBjDFnRGQ+VlfT2vutgFJKqQeTkQQQCYSISDDWF38P4Jm0B4hIiDFmv/2yE7AfwBgTnuaY14ErxpiJIpIP8DDGXLaftwXGZrYySimlMu6eCcAYkywiw4HlgCcw0xgTIyJjgShjzEJguIi0Bm4C54E+97hsUWC+PbHBC5hjjFmWiXoopZS6TzoRTCmlXFymJoIppZRyPbmqBSAi8cDhBzw9EMjwpDMXoXV2D1pn95CZOpc1xvzhNspclQAyQ0Si0msCuTKts3vQOruHrKizdgEppZSb0gSglFJuyp0SwEfODsAJtM7uQevsHhxeZ7cZA1BKKfV77tQCUEoplYYmAKWUclMunwDutZtZbiYiM0XkjIjsSlNWSERWish+++dDdrmIyHj732GHiNR1XuQPRkRKi8gqEdktIjEiMsoud+U6+4nIFhH52a7zv+zyYBHZbNftCxHxsct97dex9vvlnBl/ZoiIp4hsF5FF9muXrnN6uyRm9e+2SycAezezSVhLTlcDespt21Xmch8D7W8rexX40RgTAvxovwbr3yDEfgzktxVbc5Nk4M/GmGpAI6xlxKvh2nVOBFoaYx4GagPtRaQR8F+spdYrYq2/1d8+vj9w3i5/3z4utxoF7Enz2h3q/Igxpnaa+/2z9nfbGOOyD6AxsDzN69eA15wdl4PrWA7Yleb1XqC4/bw4sNd+PhVrK88/HJdbH8B3WFuVukWdgbzANqxl1s8CXnb5r7/nWIs2Nrafe9nHibNjf4C6lrK/8FoCiwBxgzofAgJvK8vS322XbgGQwd3MXExRY8xJ+/kprJVXwcX+Lexmfh1gMy5eZ7srJBo4A6wEDgAXjDHJ9iFp6/Vrne33LwKFszdih/gA+AuQar8ujOvXOb1dErP0dzsj+wGoXMoYY0TE5e7ztbca/QZ40RhzyV5WHHDNOhtjUoDaIlIQmA9UcXJIWUpEOgNnjDFbRaSFs+PJRmHGmOMiUgRYKSK/pH0zK363Xb0FcL+7mbmC0yJSHMD+ecYud4l/CxHxxvry/9wY861d7NJ1vsUYcwFYhdX9UVBEbv0Bl7Zev9bZfj8ASMjmUDOrKdBFRA5h7TDYEhiHa9cZk2aXRKxE34As/t129QTw625m9h0DPYCFTo4pqy3ktw15+mD1k98qf86+e6ARcDFN0zJXEOtP/RnAHmPMe2necuU6B9l/+SMiebDGPPZgJYIn7MNur/Otf4sngJ+M3UmcWxhjXjPGlDLGlMP6f/YnY0wvXLjOIpJPRPxvPcfaJXEXWf277eyBj2wYWOkI7MPqN/2bs+NxcN3mAiexdmI7hnU3RGGswbP9wA9AIftYwboj6gCwEwh1dvwPUN8wrH7SHUC0/ejo4nWuBWy367wL+IddXh7YAsQCXwG+drmf/TrWfr+8s+uQyfq3ABa5ep3tuv1sP2JufVdl9e+2LgWhlFJuytW7gJRSSt2BJgCllHJTmgCUUspNaQJQSik3pQlAKaXclCYApZRyU5oAlFLKTf0/5wnsXIoyigwAAAAASUVORK5CYII=\n",
+            "text/plain": [
+              "<Figure size 432x288 with 1 Axes>"
+            ]
+          },
+          "metadata": {
+            "needs_background": "light"
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "yt_np = yt_np.detach().numpy()\n",
+        "accuracy_score(testout,yt_np)"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 329
+        },
+        "id": "pjKtsH20k7qS",
+        "outputId": "9e366a2c-fa83-4033-ad1c-98e7812dfc8f"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "error",
+          "ename": "RuntimeError",
+          "evalue": "ignored",
+          "traceback": [
+            "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+            "\u001b[0;31mRuntimeError\u001b[0m                              Traceback (most recent call last)",
+            "\u001b[0;32m<ipython-input-21-b23324aace8f>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[0myt_np\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0myt_np\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdetach\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnumpy\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 2\u001b[0;31m \u001b[0maccuracy_score\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtestout\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0myt_np\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/sklearn/metrics/_classification.py\u001b[0m in \u001b[0;36maccuracy_score\u001b[0;34m(y_true, y_pred, normalize, sample_weight)\u001b[0m\n\u001b[1;32m    203\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    204\u001b[0m     \u001b[0;31m# Compute accuracy for each possible representation\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 205\u001b[0;31m     \u001b[0my_type\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_true\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_pred\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0m_check_targets\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my_true\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_pred\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    206\u001b[0m     \u001b[0mcheck_consistent_length\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my_true\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_pred\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msample_weight\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    207\u001b[0m     \u001b[0;32mif\u001b[0m \u001b[0my_type\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mstartswith\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"multilabel\"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/sklearn/metrics/_classification.py\u001b[0m in \u001b[0;36m_check_targets\u001b[0;34m(y_true, y_pred)\u001b[0m\n\u001b[1;32m     83\u001b[0m     \"\"\"\n\u001b[1;32m     84\u001b[0m     \u001b[0mcheck_consistent_length\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my_true\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_pred\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 85\u001b[0;31m     \u001b[0mtype_true\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mtype_of_target\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my_true\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     86\u001b[0m     \u001b[0mtype_pred\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mtype_of_target\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my_pred\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     87\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/sklearn/utils/multiclass.py\u001b[0m in \u001b[0;36mtype_of_target\u001b[0;34m(y)\u001b[0m\n\u001b[1;32m    277\u001b[0m         \u001b[0;32mraise\u001b[0m \u001b[0mValueError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"y cannot be class 'SparseSeries' or 'SparseArray'\"\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    278\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 279\u001b[0;31m     \u001b[0;32mif\u001b[0m \u001b[0mis_multilabel\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    280\u001b[0m         \u001b[0;32mreturn\u001b[0m \u001b[0;34m\"multilabel-indicator\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    281\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/sklearn/utils/multiclass.py\u001b[0m in \u001b[0;36mis_multilabel\u001b[0;34m(y)\u001b[0m\n\u001b[1;32m    149\u001b[0m             \u001b[0mwarnings\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msimplefilter\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"error\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mVisibleDeprecationWarning\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    150\u001b[0m             \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 151\u001b[0;31m                 \u001b[0my\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0masarray\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0my\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    152\u001b[0m             \u001b[0;32mexcept\u001b[0m \u001b[0mnp\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mVisibleDeprecationWarning\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    153\u001b[0m                 \u001b[0;31m# dtype=object should be provided explicitly for ragged arrays,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/numpy/core/_asarray.py\u001b[0m in \u001b[0;36masarray\u001b[0;34m(a, dtype, order)\u001b[0m\n\u001b[1;32m     81\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     82\u001b[0m     \"\"\"\n\u001b[0;32m---> 83\u001b[0;31m     \u001b[0;32mreturn\u001b[0m \u001b[0marray\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ma\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mdtype\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mcopy\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0morder\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0morder\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     84\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     85\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;32m/usr/local/lib/python3.7/dist-packages/torch/_tensor.py\u001b[0m in \u001b[0;36m__array__\u001b[0;34m(self, dtype)\u001b[0m\n\u001b[1;32m    676\u001b[0m             \u001b[0;32mreturn\u001b[0m \u001b[0mhandle_torch_function\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mTensor\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m__array__\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mdtype\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mdtype\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    677\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mdtype\u001b[0m \u001b[0;32mis\u001b[0m \u001b[0;32mNone\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 678\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnumpy\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    679\u001b[0m         \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    680\u001b[0m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnumpy\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mastype\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mdtype\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mcopy\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mFalse\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+            "\u001b[0;31mRuntimeError\u001b[0m: Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead."
+          ]
+        }
+      ]
+    }
+  ]
+}
